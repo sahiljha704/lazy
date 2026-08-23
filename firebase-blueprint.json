@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with Google Gmail verification, avatar, daily copy quota, and saved items",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "joinedAt": { "type": "string" },
+        "lastLoginAt": { "type": "string" },
+        "copiedTodayCount": { "type": "number" },
+        "unlockedComponentIds": { "type": "array" },
+        "wishlistComponentIds": { "type": "array" },
+        "likedComponentIds": { "type": "array" }
+      },
+      "required": ["email", "name"]
+    },
+    "Component": {
+      "title": "Component",
+      "description": "UI component item submitted by creator or seeded",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "framework": { "type": "string" },
+        "description": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorEmail": { "type": "string" },
+        "tags": { "type": "array" },
+        "viewsCount": { "type": "number" },
+        "likesCount": { "type": "number" },
+        "wishlistCount": { "type": "number" },
+        "copyCount": { "type": "number" },
+        "code": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "code", "authorEmail"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles and bookmarks"
+    },
+    "/components/{componentId}": {
+      "schema": { "$ref": "#/entities/Component" },
+      "description": "Public community components"
+    }
+  }
+}

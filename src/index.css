@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-main: #050505;
+    --bg-card: #0A0A0A;
+    --bg-surface: #111111;
+    --bg-surface-elevated: #1A1A1A;
+    --border-subtle: #222222;
+    --border-card: #333333;
+    --border-hover: #444444;
+    --text-primary: #E5E5E5;
+    --text-silver: #C0C0C0;
+    --text-muted: #888888;
+    --text-dim: #555555;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #050505;
+    color: #E5E5E5;
+  }
+}
+
+/* Using standard CSS keyword shapes (Note: standard shapes inherit OS styling) */
+.custom-pointer {
+  cursor: default; 
+}
+
+/* Elegant Dark & Silver Utilities */
+.silver-gradient-text {
+  background: linear-gradient(180deg, #FFFFFF 0%, #E5E5E5 35%, #C0C0C0 70%, #888888 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.silver-metallic-border {
+  border: 1px solid #333333;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 20px rgba(0, 0, 0, 0.7);
+}
+
+.silver-glow {
+  box-shadow: 0 0 20px rgba(192, 192, 192, 0.18);
+}
+
+.silver-glow-hover:hover {
+  box-shadow: 0 0 25px rgba(192, 192, 192, 0.35);
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #222222;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #333333;
+}
+
+/* Shimmer scanline effect for locked code */
+@keyframes matrix-scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(1000%); }
+}
+
+.animate-scanline {
+  animation: matrix-scan 3s linear infinite;
+}
+
+/* Hide ALL native video controls globally - no pause/mute buttons */
+video::-webkit-media-controls,
+video::-webkit-media-controls-enclosure,
+video::-webkit-media-controls-panel,
+video::-webkit-media-controls-play-button,
+video::-webkit-media-controls-volume-slider,
+video::-webkit-media-controls-mute-button,
+video::-webkit-media-controls-timeline,
+video::-webkit-media-controls-current-time-display,
+video::-webkit-media-controls-time-remaining-display,
+video::-webkit-media-controls-toggle-closed-captions-button,
+video::-webkit-media-controls-fullscreen-button,
+video::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+video::-moz-range-track {
+  display: none !important;
+}
+
+video {
+  -webkit-media-controls: none !important;
+}
+

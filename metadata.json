@@ -1,0 +1,6 @@
+{
+  "name": "Lazy UI",
+  "description": "Interactive UI component showcase with automated live React and Tailwind code execution previews, Magic Bento boundary physics, and single daily copy quotas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
