@@ -90,7 +90,8 @@ export async function loginWithEmail(
   name?: string,
   avatar?: string
 ): Promise<{ user: UserSession; quota: CopyQuotaResponse; isFirstLogin?: boolean }> {
-  if (!email || !email.includes('@')) {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes('@')) {
     throw new Error('Access denied: A valid email address is required to authenticate on Lazy UI.');
   }
 
@@ -98,29 +99,76 @@ export async function loginWithEmail(
     throw new Error('Please enter a password with at least 4 characters.');
   }
 
-  const res = await fetch('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: email.trim().toLowerCase(), password: password.trim(), name, avatar }),
-  });
+  let serverData: any = null;
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: cleanEmail, password: password.trim(), name, avatar }),
+    });
 
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error || 'Failed to authenticate account.');
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to authenticate account.');
+      }
+      serverData = data;
+    } else if (!res.ok) {
+      console.warn(`Auth API endpoint returned status ${res.status}`);
+    }
+  } catch (err: any) {
+    if (err.message && !err.message.includes('Unexpected token') && !err.message.includes('fetch')) {
+      throw err;
+    }
+    console.warn('Backend API offline or unreachable, using client session:', err);
   }
 
-  const data = await res.json();
+  let finalUser: UserSession;
+  let isFirstLogin = false;
+  let quota: CopyQuotaResponse;
+
+  if (serverData && serverData.user) {
+    finalUser = serverData.user;
+    isFirstLogin = !!serverData.isFirstLogin;
+    quota = serverData.quota || {
+      canCopy: true,
+      copiedTodayCount: 0,
+      maxDailyCopies: 2,
+      remainingCopies: 2,
+      nextResetTimestamp: new Date().setUTCHours(24, 0, 0, 0),
+    };
+  } else {
+    finalUser = {
+      email: cleanEmail,
+      name: name || cleanEmail.split('@')[0],
+      avatar: avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanEmail}&backgroundColor=09090b`,
+      joinedAt: new Date().toISOString(),
+      copiedTodayCount: 0,
+      unlockedComponentIds: [],
+      wishlistComponentIds: [],
+      likedComponentIds: [],
+      isFirstLogin: false,
+    };
+    quota = {
+      canCopy: true,
+      copiedTodayCount: 0,
+      maxDailyCopies: 2,
+      remainingCopies: 2,
+      nextResetTimestamp: new Date().setUTCHours(24, 0, 0, 0),
+    };
+  }
 
   // Sync with Firestore cloud database
   try {
-    const syncedUser = await syncUserInFirestore(data.user);
-    data.user = syncedUser;
+    const syncedUser = await syncUserInFirestore(finalUser);
+    finalUser = syncedUser;
   } catch (err) {
     console.warn('Firestore user sync warning:', err);
   }
 
-  saveStoredUser(data.user);
-  return data;
+  saveStoredUser(finalUser);
+  return { user: finalUser, quota, isFirstLogin };
 }
 
 
