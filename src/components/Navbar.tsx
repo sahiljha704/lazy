@@ -193,7 +193,7 @@ export function Navbar({
                   d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.3 7.5 23.5 12 23.5z"
                 />
               </svg>
-              <span>Gmail Login</span>
+              <span>Sign In</span>
             </button>
           )}
 

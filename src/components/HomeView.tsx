@@ -295,7 +295,7 @@ export function HomeView({
             </div>
             <h3 className="text-sm font-bold text-white font-sans">Author Controlled</h3>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Fair daily quota enforcement and Gmail verified sessions ensure only creators can manage or remove their UI.
+              Fair daily quota enforcement and verified sessions ensure only creators can manage or remove their UI.
             </p>
           </div>
         </div>

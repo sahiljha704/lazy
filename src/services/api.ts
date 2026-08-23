@@ -2,7 +2,6 @@ import { UIComponentItem, UserSession, CopyQuotaResponse } from '../types';
 import { SEED_COMPONENTS } from '../data/seedComponents';
 import {
   syncUserInFirestore,
-  signInWithGoogleReal,
   fetchComponentsFromFirestore,
   publishComponentToFirestore,
   deleteComponentFromFirestore,
@@ -54,7 +53,7 @@ export function getStoredUser(): UserSession | null {
     const raw = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
     if (!raw) return null;
     const user = JSON.parse(raw);
-    if (user.email && user.email.toLowerCase().endsWith('@gmail.com')) {
+    if (user.email) {
       return user;
     }
     return null;
@@ -85,14 +84,14 @@ export function saveStoredSidebarCollapsed(collapsed: boolean) {
   } catch (e) {}
 }
 
-export async function loginWithGmail(
+export async function loginWithEmail(
   email: string,
   password: string,
   name?: string,
   avatar?: string
 ): Promise<{ user: UserSession; quota: CopyQuotaResponse; isFirstLogin?: boolean }> {
-  if (!email || !email.trim().toLowerCase().endsWith('@gmail.com')) {
-    throw new Error('Access denied: Only official @gmail.com accounts are permitted to authenticate on Lazy UI.');
+  if (!email || !email.includes('@')) {
+    throw new Error('Access denied: A valid email address is required to authenticate on Lazy UI.');
   }
 
   if (!password || password.length < 4) {
@@ -107,7 +106,7 @@ export async function loginWithGmail(
 
   if (!res.ok) {
     const data = await res.json();
-    throw new Error(data.error || 'Failed to authenticate Gmail account.');
+    throw new Error(data.error || 'Failed to authenticate account.');
   }
 
   const data = await res.json();
@@ -124,11 +123,7 @@ export async function loginWithGmail(
   return data;
 }
 
-export async function loginWithGoogle(): Promise<{ user: UserSession }> {
-  const user = await signInWithGoogleReal();
-  saveStoredUser(user);
-  return { user };
-}
+
 
 export async function updateUserAvatar(email: string, avatarUrl: string): Promise<UserSession> {
   const current = getStoredUser();

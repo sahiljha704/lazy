@@ -51,10 +51,10 @@ async function startServer() {
     return d.getTime();
   };
 
-  // Helper to validate @gmail.com
-  const isGmail = (email: string): boolean => {
+  // Helper to validate email
+  const isValidEmail = (email: string): boolean => {
     if (!email) return false;
-    return email.trim().toLowerCase().endsWith('@gmail.com');
+    return email.includes('@');
   };
 
   // ================= API ROUTES =================
@@ -63,13 +63,13 @@ async function startServer() {
     res.json({ status: 'ok', time: new Date().toISOString() });
   });
 
-  // Auth / Login with Password & Strict Gmail Verification
+  // Auth / Login with Password
   app.post('/api/auth/login', (req, res) => {
     const { email, password, name, avatar } = req.body;
 
-    if (!email || !isGmail(email)) {
+    if (!email || !isValidEmail(email)) {
       return res.status(400).json({
-        error: 'Only official @gmail.com accounts are permitted to authenticate on Lazy UI.',
+        error: 'A valid email address is required to authenticate on Lazy UI.',
       });
     }
 
@@ -111,7 +111,7 @@ async function startServer() {
       // Existing account - Verify password
       if (account.password && account.password !== password.trim()) {
         return res.status(401).json({
-          error: 'Incorrect password for this Gmail account. Please enter the password you registered with.',
+          error: 'Incorrect password for this account. Please enter the password you registered with.',
         });
       }
       account.loginCount += 1;
@@ -148,7 +148,7 @@ async function startServer() {
   // Avatar Update Route
   app.post('/api/auth/avatar', (req, res) => {
     const { email, avatar } = req.body;
-    if (!email || !isGmail(email) || !avatar) {
+    if (!email || !isValidEmail(email) || !avatar) {
       return res.status(400).json({ error: 'Valid email and avatar URL required.' });
     }
     const cleanEmail = email.trim().toLowerCase();
@@ -171,7 +171,7 @@ async function startServer() {
   // Get user quota
   app.get('/api/auth/quota', (req, res) => {
     const email = req.query.email as string;
-    if (!email || !isGmail(email)) {
+    if (!email || !isValidEmail(email)) {
       return res.json({
         canCopy: false,
         copiedTodayCount: 0,
@@ -209,7 +209,7 @@ async function startServer() {
   // Get Components List
   app.get('/api/components', (req, res) => {
     const { category, search, framework, sort, email } = req.query;
-    const cleanEmail = email && typeof email === 'string' && isGmail(email) ? email.trim().toLowerCase() : null;
+    const cleanEmail = email && typeof email === 'string' && isValidEmail(email) ? email.trim().toLowerCase() : null;
 
     let filtered = [...components];
 
@@ -266,7 +266,7 @@ async function startServer() {
   app.get('/api/components/:id', (req, res) => {
     const { id } = req.params;
     const email = req.query.email as string;
-    const cleanEmail = email && isGmail(email) ? email.trim().toLowerCase() : null;
+    const cleanEmail = email && isValidEmail(email) ? email.trim().toLowerCase() : null;
 
     const comp = components.find((c) => c.id === id);
     if (!comp) {
@@ -291,9 +291,9 @@ async function startServer() {
     const { id } = req.params;
     const { email } = req.body;
 
-    if (!email || !isGmail(email)) {
+    if (!email || !isValidEmail(email)) {
       return res.status(401).json({
-        error: 'Authentication required. Please log in with a valid @gmail.com address to copy code.',
+        error: 'Authentication required. Please log in with a valid email address to copy code.',
       });
     }
 
@@ -359,8 +359,8 @@ async function startServer() {
   app.post('/api/components/:id/like', (req, res) => {
     const { id } = req.params;
     const { email } = req.body;
-    if (!email || !isGmail(email)) {
-      return res.status(401).json({ error: 'Please log in with a valid @gmail.com account to like components.' });
+    if (!email || !isValidEmail(email)) {
+      return res.status(401).json({ error: 'Please log in with a valid email account to like components.' });
     }
 
     const comp = components.find((c) => c.id === id);
@@ -389,8 +389,8 @@ async function startServer() {
   app.post('/api/components/:id/wishlist', (req, res) => {
     const { id } = req.params;
     const { email } = req.body;
-    if (!email || !isGmail(email)) {
-      return res.status(401).json({ error: 'Please log in with a valid @gmail.com account to bookmark components.' });
+    if (!email || !isValidEmail(email)) {
+      return res.status(401).json({ error: 'Please log in with a valid email account to bookmark components.' });
     }
 
     const comp = components.find((c) => c.id === id);
@@ -442,8 +442,8 @@ async function startServer() {
   app.post('/api/components', (req, res) => {
     const { title, category, framework, description, authorName, authorEmail, tags, screenRecordingUrl, videoUrl, postUrl, posterUrl, liveDemoUrl, code } = req.body;
 
-    if (!authorEmail || !isGmail(authorEmail)) {
-      return res.status(400).json({ error: 'You must be logged in with a valid @gmail.com account to upload.' });
+    if (!authorEmail || !isValidEmail(authorEmail)) {
+      return res.status(400).json({ error: 'You must be logged in with a valid email account to upload.' });
     }
 
     if (!title || !code) {

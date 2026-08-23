@@ -13,13 +13,8 @@ import {
   arrayRemove,
   increment,
 } from 'firebase/firestore';
-import {
   getAuth,
   Auth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   signOut,
   onAuthStateChanged,
   User as FirebaseUser,
@@ -51,8 +46,6 @@ export const db: Firestore = (firebaseConfigJson as any).firestoreDatabaseId
   : getFirestore(app);
 
 export const auth: Auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 // ================= FIRESTORE DATABASE HELPERS =================
 
@@ -120,101 +113,7 @@ export async function syncUserInFirestore(user: UserSession): Promise<UserSessio
   }
 }
 
-/**
- * Real Google Authentication with Firebase Auth
- */
-export async function signInWithGoogleReal(): Promise<UserSession> {
-  try {
-    // Try popup first
-    let result;
-    try {
-      result = await signInWithPopup(auth, googleProvider);
-    } catch (popupError: any) {
-      // If popup is blocked or fails, try redirect
-      if (
-        popupError.code === 'auth/popup-blocked' ||
-        popupError.code === 'auth/cancelled-popup-request' ||
-        popupError.code === 'auth/popup-closed-by-user'
-      ) {
-        // Fall back to redirect
-        await signInWithRedirect(auth, googleProvider);
-        // This line won't execute immediately; the page will redirect
-        throw new Error('Redirecting to Google Sign-In...');
-      }
-      throw popupError;
-    }
 
-    const gUser = result.user;
-    const email = gUser.email || '';
-
-    if (!email) {
-      throw new Error('No email returned from Google authentication.');
-    }
-
-    if (!email.toLowerCase().endsWith('@gmail.com')) {
-      await signOut(auth);
-      throw new Error('Access denied: Only Google @gmail.com accounts are permitted to authenticate.');
-    }
-
-    const session: UserSession = {
-      email: email.toLowerCase(),
-      name: gUser.displayName || email.split('@')[0],
-      avatar: gUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${email}&backgroundColor=09090b`,
-      joinedAt: new Date().toISOString(),
-      copiedTodayCount: 0,
-      unlockedComponentIds: [],
-      wishlistComponentIds: [],
-      likedComponentIds: [],
-    };
-
-    return await syncUserInFirestore(session);
-  } catch (error: any) {
-    if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
-      throw new Error('Google Sign-In popup was blocked by your browser. Please allow popups and try again.');
-    }
-    if (error.code === 'auth/popup-closed-by-user') {
-      throw new Error('Google Sign-In was cancelled.');
-    }
-    if (error.code === 'auth/unauthorized-domain') {
-      throw new Error('This domain is not authorized for Google Sign-In. Please use the Gmail/password login below.');
-    }
-    throw error;
-  }
-}
-
-/**
- * Handle redirect result after Google Sign-In redirect
- */
-export async function handleGoogleRedirectResult(): Promise<UserSession | null> {
-  try {
-    const result = await getRedirectResult(auth);
-    if (!result) return null;
-
-    const gUser = result.user;
-    const email = gUser.email || '';
-
-    if (!email || !email.toLowerCase().endsWith('@gmail.com')) {
-      await signOut(auth);
-      return null;
-    }
-
-    const session: UserSession = {
-      email: email.toLowerCase(),
-      name: gUser.displayName || email.split('@')[0],
-      avatar: gUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${email}&backgroundColor=09090b`,
-      joinedAt: new Date().toISOString(),
-      copiedTodayCount: 0,
-      unlockedComponentIds: [],
-      wishlistComponentIds: [],
-      likedComponentIds: [],
-    };
-
-    return await syncUserInFirestore(session);
-  } catch (err) {
-    console.warn('Google redirect result check failed:', err);
-    return null;
-  }
-}
 
 /**
  * Update User Avatar in Firestore

@@ -86,7 +86,7 @@ export function DashboardView({
             Authentication Required
           </h2>
           <p className="text-sm text-zinc-400 max-w-md mx-auto">
-            Please authenticate with your official Google Gmail account to access your personal dashboard, manage your daily 2-copy credit, and view your saved components.
+            Please authenticate with your email account to access your personal dashboard, manage your daily 2-copy credit, and view your saved components.
           </p>
         </div>
         <button
@@ -156,7 +156,7 @@ export function DashboardView({
                   {currentUser.name}
                 </h1>
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-800/60 text-[10px] font-mono text-emerald-300 font-semibold">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Verified Gmail
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Verified User
                 </span>
               </div>
               <p className="text-xs font-mono text-zinc-400 truncate">{currentUser.email}</p>

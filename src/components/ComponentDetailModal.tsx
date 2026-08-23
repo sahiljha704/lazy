@@ -126,9 +126,9 @@ export function ComponentDetailModal({
   const handleCopyCode = async () => {
     setErrorMessage(null);
 
-    // 1. Check if logged in with @gmail.com
-    if (!currentUser || !currentUser.email.endsWith('@gmail.com')) {
-      onRequireAuth('copy component source code');
+    // 1. Check if logged in
+    if (!currentUser || !currentUser.email) {
+      onRequireAuth('copy production code to clipboard');
       return;
     }
 

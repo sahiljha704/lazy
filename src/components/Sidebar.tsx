@@ -249,13 +249,13 @@ export function Sidebar({
         ) : (
           <button
             onClick={onOpenAuth}
-            title="Sign In with Gmail / Google"
+            title="Sign In"
             className={`w-full py-2.5 ${
               isCollapsed ? 'px-2 flex justify-center' : 'px-3 flex items-center justify-center gap-2'
             } rounded-xl bg-white hover:bg-zinc-200 border border-white text-xs font-semibold text-black transition-colors cursor-pointer shadow-[0_0_15px_rgba(255,255,255,0.15)] active:scale-95`}
           >
             <Mail className="w-4 h-4 text-black" />
-            {!isCollapsed && <span>Sign In with Gmail</span>}
+            {!isCollapsed && <span>Sign In</span>}
           </button>
         )}
 
@@ -426,7 +426,7 @@ export function Sidebar({
                       }}
                       className="w-full py-2.5 px-3 rounded-xl bg-white text-xs font-semibold text-black flex items-center justify-center gap-2"
                     >
-                      <Mail className="w-4 h-4 text-black" /> Sign In with Gmail
+                      <Mail className="w-4 h-4 text-black" /> Sign In
                     </button>
                   )}
                 </div>

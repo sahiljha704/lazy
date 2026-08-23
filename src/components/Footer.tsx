@@ -69,7 +69,7 @@ export function Footer({ onNavigate }: Props) {
               Security Protocol
             </p>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              All logins require valid @gmail.com accounts. Immediate security confirmation alerts logged on every session.
+              Immediate security confirmation alerts logged on every session.
             </p>
           </div>
         </div>

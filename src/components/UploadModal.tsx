@@ -190,7 +190,7 @@ export function UploadModal({ isOpen, onClose, currentUser, onRequireAuth, onUpl
     e.preventDefault();
     setErrorMsg('');
 
-    if (!currentUser || !currentUser.email.endsWith('@gmail.com')) {
+    if (!currentUser || !currentUser.email) {
       onRequireAuth('upload UI components to Lazy UI');
       return;
     }

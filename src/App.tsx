@@ -10,14 +10,14 @@ import {
   toggleWishlistComponent,
   deleteComponent,
 } from './services/api';
-import { subscribeToFirebaseAuth, syncUserInFirestore, logOutFromFirebase, handleGoogleRedirectResult } from './lib/firebase';
+import { subscribeToFirebaseAuth, syncUserInFirestore, logOutFromFirebase } from './lib/firebase';
 import { Sidebar } from './components/Sidebar';
 import { Footer } from './components/Footer';
 import { HomeView } from './components/HomeView';
 import { ShowcaseView } from './components/ShowcaseView';
 import { DashboardView } from './components/DashboardView';
 import { ComponentDetailModal } from './components/ComponentDetailModal';
-import { GmailAuthModal } from './components/GmailAuthModal';
+import { AuthModal } from './components/AuthModal';
 import { UploadModal } from './components/UploadModal';
 import { ShareModal } from './components/ShareModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
@@ -168,9 +168,9 @@ export default function App() {
 
     // Subscribe to Firebase Auth changes
     const unsubscribe = subscribeToFirebaseAuth(async (fbUser) => {
-      if (fbUser && fbUser.email && fbUser.email.toLowerCase().endsWith('@gmail.com')) {
+      if (fbUser && fbUser.email) {
         const storedUser = getStoredUser();
-        const baseSession: UserSession = {
+        const session: UserSession = {
           email: fbUser.email.toLowerCase(),
           name: fbUser.displayName || storedUser?.name || fbUser.email.split('@')[0],
           avatar: storedUser?.avatar || fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${fbUser.email}&backgroundColor=09090b`,
@@ -186,16 +186,7 @@ export default function App() {
       }
     });
 
-    // Check for Google redirect result (fallback auth)
-    handleGoogleRedirectResult()
-      .then((redirectUser) => {
-        if (redirectUser) {
-          setCurrentUser(redirectUser);
-          saveStoredUser(redirectUser);
-          loadComponents(redirectUser.email);
-        }
-      })
-      .catch(() => {});
+
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
@@ -456,8 +447,8 @@ export default function App() {
         onUserSessionUpdated={handleUserSessionUpdated}
       />
 
-      {/* Gmail Auth Modal */}
-      <GmailAuthModal
+      {/* Auth Modal */}
+      <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         onSuccess={handleLoginSuccess}
