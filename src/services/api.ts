@@ -13,6 +13,49 @@ import {
 const LOCAL_STORAGE_USER_KEY = 'lazy_ui_user_session';
 const LOCAL_STORAGE_SIDEBAR_KEY = 'lazy_ui_sidebar_collapsed';
 const LOCAL_STORAGE_UPLOADED_COMPONENTS_KEY = 'lazy_ui_uploaded_components_cache';
+const LOCAL_STORAGE_USERS_VAULT_KEY = 'lazy_ui_users_vault_db';
+
+export interface StoredVaultUser extends UserSession {
+  password?: string;
+}
+
+// ================= LOCAL STORAGE PERSISTENCE VAULT =================
+
+export function getStoredUsersVault(): Record<string, StoredVaultUser> {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_USERS_VAULT_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+export function saveUserToVault(user: UserSession, password?: string) {
+  try {
+    const cleanEmail = user.email.toLowerCase().trim();
+    if (!cleanEmail) return;
+    const vault = getStoredUsersVault();
+    vault[cleanEmail] = {
+      ...(vault[cleanEmail] || {}),
+      ...user,
+      email: cleanEmail,
+      password: password ? password.trim() : vault[cleanEmail]?.password,
+    };
+    localStorage.setItem(LOCAL_STORAGE_USERS_VAULT_KEY, JSON.stringify(vault));
+  } catch (e) {}
+}
+
+export function getUserFromVault(email: string): StoredVaultUser | null {
+  try {
+    const cleanEmail = email.toLowerCase().trim();
+    const vault = getStoredUsersVault();
+    return vault[cleanEmail] || null;
+  } catch (e) {
+    return null;
+  }
+}
 
 export function getStoredUploadedComponents(): UIComponentItem[] {
   try {
@@ -53,7 +96,7 @@ export function getStoredUser(): UserSession | null {
     const raw = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
     if (!raw) return null;
     const user = JSON.parse(raw);
-    if (user.email) {
+    if (user && user.email) {
       return user;
     }
     return null;
@@ -67,6 +110,7 @@ export function saveStoredUser(user: UserSession | null) {
     localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
   } else {
     localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(user));
+    saveUserToVault(user);
   }
 }
 
@@ -84,6 +128,8 @@ export function saveStoredSidebarCollapsed(collapsed: boolean) {
   } catch (e) {}
 }
 
+// ================= AUTHENTICATION & LOGIN =================
+
 export async function loginWithEmail(
   email: string,
   password: string,
@@ -98,6 +144,9 @@ export async function loginWithEmail(
   if (!password || password.length < 4) {
     throw new Error('Please enter a password with at least 4 characters.');
   }
+
+  // Check vault for existing user account data (prevents data loss on logout)
+  const existingVaultUser = getUserFromVault(cleanEmail);
 
   let serverData: any = null;
   try {
@@ -121,21 +170,45 @@ export async function loginWithEmail(
     if (err.message && !err.message.includes('Unexpected token') && !err.message.includes('fetch')) {
       throw err;
     }
-    console.warn('Backend API offline or unreachable, using client session:', err);
+    console.warn('Backend API offline or unreachable, using local & cloud session:', err);
   }
 
   let finalUser: UserSession;
-  let isFirstLogin = false;
+  let isFirstLogin = !existingVaultUser;
   let quota: CopyQuotaResponse;
 
   if (serverData && serverData.user) {
-    finalUser = serverData.user;
+    finalUser = {
+      ...serverData.user,
+      likedComponentIds: serverData.user.likedComponentIds?.length
+        ? serverData.user.likedComponentIds
+        : (existingVaultUser?.likedComponentIds || []),
+      wishlistComponentIds: serverData.user.wishlistComponentIds?.length
+        ? serverData.user.wishlistComponentIds
+        : (existingVaultUser?.wishlistComponentIds || []),
+      unlockedComponentIds: serverData.user.unlockedComponentIds?.length
+        ? serverData.user.unlockedComponentIds
+        : (existingVaultUser?.unlockedComponentIds || []),
+    };
     isFirstLogin = !!serverData.isFirstLogin;
     quota = serverData.quota || {
       canCopy: true,
-      copiedTodayCount: 0,
+      copiedTodayCount: finalUser.copiedTodayCount || 0,
       maxDailyCopies: 2,
-      remainingCopies: 2,
+      remainingCopies: Math.max(0, 2 - (finalUser.copiedTodayCount || 0)),
+      nextResetTimestamp: new Date().setUTCHours(24, 0, 0, 0),
+    };
+  } else if (existingVaultUser) {
+    finalUser = {
+      ...existingVaultUser,
+      name: name || existingVaultUser.name,
+      avatar: avatar || existingVaultUser.avatar,
+    };
+    quota = {
+      canCopy: (finalUser.copiedTodayCount || 0) < 2,
+      copiedTodayCount: finalUser.copiedTodayCount || 0,
+      maxDailyCopies: 2,
+      remainingCopies: Math.max(0, 2 - (finalUser.copiedTodayCount || 0)),
       nextResetTimestamp: new Date().setUTCHours(24, 0, 0, 0),
     };
   } else {
@@ -148,7 +221,7 @@ export async function loginWithEmail(
       unlockedComponentIds: [],
       wishlistComponentIds: [],
       likedComponentIds: [],
-      isFirstLogin: false,
+      isFirstLogin: true,
     };
     quota = {
       canCopy: true,
@@ -159,19 +232,26 @@ export async function loginWithEmail(
     };
   }
 
-  // Sync with Firestore cloud database
+  // Sync with Firestore cloud database to restore any remote data
   try {
     const syncedUser = await syncUserInFirestore(finalUser);
-    finalUser = syncedUser;
+    finalUser = {
+      ...finalUser,
+      ...syncedUser,
+      likedComponentIds: Array.from(new Set([...(finalUser.likedComponentIds || []), ...(syncedUser.likedComponentIds || [])])),
+      wishlistComponentIds: Array.from(new Set([...(finalUser.wishlistComponentIds || []), ...(syncedUser.wishlistComponentIds || [])])),
+      unlockedComponentIds: Array.from(new Set([...(finalUser.unlockedComponentIds || []), ...(syncedUser.unlockedComponentIds || [])])),
+    };
   } catch (err) {
     console.warn('Firestore user sync warning:', err);
   }
 
+  // Save to persistent vault and active session
+  saveUserToVault(finalUser, password);
   saveStoredUser(finalUser);
+
   return { user: finalUser, quota, isFirstLogin };
 }
-
-
 
 export async function updateUserAvatar(email: string, avatarUrl: string): Promise<UserSession> {
   const current = getStoredUser();
@@ -189,6 +269,7 @@ export async function updateUserAvatar(email: string, avatarUrl: string): Promis
   };
 
   saveStoredUser(updated);
+  saveUserToVault(updated);
 
   // Sync to Firestore
   updateUserAvatarInFirestore(email, avatarUrl).catch((err) => {
@@ -204,6 +285,8 @@ export async function updateUserAvatar(email: string, avatarUrl: string): Promis
 
   return updated;
 }
+
+// ================= COMPONENT FETCH & ACTIONS =================
 
 export async function fetchComponents(params?: {
   category?: string;
@@ -277,7 +360,6 @@ export async function recordComponentView(id: string): Promise<number | null> {
 
     const sessionKey = `viewed_comp_${id}`;
     if (sessionStorage.getItem(sessionKey)) {
-      // Already counted in this session
       return null;
     }
     sessionStorage.setItem(sessionKey, '1');
@@ -297,33 +379,56 @@ export async function recordComponentView(id: string): Promise<number | null> {
 }
 
 export async function toggleLikeComponent(id: string, email: string): Promise<{ isLiked: boolean; likesCount: number }> {
+  const cleanEmail = email.toLowerCase().trim();
+  const currentUser = getStoredUser();
+  if (currentUser && currentUser.email.toLowerCase() === cleanEmail) {
+    const isLiked = currentUser.likedComponentIds?.includes(id) || false;
+    const updatedLikes = isLiked
+      ? (currentUser.likedComponentIds || []).filter((item) => item !== id)
+      : [...(currentUser.likedComponentIds || []), id];
+    const updated = { ...currentUser, likedComponentIds: updatedLikes };
+    saveStoredUser(updated);
+    saveUserToVault(updated);
+  }
+
   try {
     const res = await fetch(`/api/components/${id}/like`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email: cleanEmail }),
     });
     if (res.ok) {
       const data = await res.json();
-      toggleLikeInFirestore(id, email, data.isLiked).catch(() => {});
+      toggleLikeInFirestore(id, cleanEmail, data.isLiked).catch(() => {});
       return data;
     }
   } catch (e) {}
 
-  // Fallback
   return { isLiked: true, likesCount: 1 };
 }
 
 export async function toggleWishlistComponent(id: string, email: string): Promise<{ isWishlisted: boolean; wishlistCount: number }> {
+  const cleanEmail = email.toLowerCase().trim();
+  const currentUser = getStoredUser();
+  if (currentUser && currentUser.email.toLowerCase() === cleanEmail) {
+    const isWishlisted = currentUser.wishlistComponentIds?.includes(id) || false;
+    const updatedWishlist = isWishlisted
+      ? (currentUser.wishlistComponentIds || []).filter((item) => item !== id)
+      : [...(currentUser.wishlistComponentIds || []), id];
+    const updated = { ...currentUser, wishlistComponentIds: updatedWishlist };
+    saveStoredUser(updated);
+    saveUserToVault(updated);
+  }
+
   try {
     const res = await fetch(`/api/components/${id}/wishlist`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email: cleanEmail }),
     });
     if (res.ok) {
       const data = await res.json();
-      toggleWishlistInFirestore(id, email, data.isWishlisted).catch(() => {});
+      toggleWishlistInFirestore(id, cleanEmail, data.isWishlisted).catch(() => {});
       return data;
     }
   } catch (e) {}
@@ -332,36 +437,68 @@ export async function toggleWishlistComponent(id: string, email: string): Promis
 }
 
 export async function uploadComponent(componentData: Partial<UIComponentItem>): Promise<UIComponentItem> {
-  const res = await fetch('/api/components', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(componentData),
-  });
-  if (!res.ok) {
-    let errorMsg = 'Failed to publish component';
-    try {
-      const err = await res.json();
-      errorMsg = err.error || errorMsg;
-    } catch {
-      if (res.status === 413) {
-        errorMsg = 'Video payload is too large. Please use a shorter clip (< 50MB) or provide a video URL link.';
-      } else {
-        errorMsg = `Server error (${res.status}): Failed to save component.`;
+  const newComponent: UIComponentItem = {
+    id: `comp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    title: componentData.title?.trim() || 'Untitled Component',
+    category: componentData.category || 'Buttons & Actions',
+    framework: componentData.framework || 'React + Tailwind',
+    description: componentData.description?.trim() || 'A sleek dark & silver UI component crafted for Lazy UI.',
+    authorName: componentData.authorName?.trim() || (componentData.authorEmail ? componentData.authorEmail.split('@')[0] : 'Creator'),
+    authorEmail: (componentData.authorEmail || '').trim().toLowerCase(),
+    tags: Array.isArray(componentData.tags) ? componentData.tags : ['DarkUI', 'Silver', 'Component'],
+    viewsCount: 1,
+    likesCount: 1,
+    wishlistCount: 0,
+    copyCount: 0,
+    createdAt: new Date().toISOString(),
+    liveDemoUrl: componentData.liveDemoUrl?.trim() || undefined,
+    screenRecordingUrl: componentData.screenRecordingUrl || componentData.videoUrl,
+    videoUrl: componentData.videoUrl || componentData.screenRecordingUrl,
+    postUrl: componentData.postUrl?.trim() || undefined,
+    posterUrl: componentData.posterUrl?.trim() || undefined,
+    code: componentData.code?.trim() || '',
+    featured: false,
+    isUnlocked: true,
+  };
+
+  // 1. Immediately store in persistent local cache (never lost across logouts)
+  addStoredUploadedComponent(newComponent);
+
+  // 2. Also unlock for current user
+  const currentUser = getStoredUser();
+  if (currentUser) {
+    if (!currentUser.unlockedComponentIds.includes(newComponent.id)) {
+      currentUser.unlockedComponentIds.push(newComponent.id);
+      saveStoredUser(currentUser);
+      saveUserToVault(currentUser);
+    }
+  }
+
+  // 3. Send to backend if online
+  try {
+    const res = await fetch('/api/components', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(componentData),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.component) {
+        addStoredUploadedComponent(data.component);
+        publishComponentToFirestore(data.component).catch(() => {});
+        return data.component;
       }
     }
-    throw new Error(errorMsg);
+  } catch (err) {
+    console.warn('Backend upload network note, falling back to Firestore & local vault:', err);
   }
-  const data = await res.json();
 
-  // Persist locally in cache so logout or offline never loses the asset
-  addStoredUploadedComponent(data.component);
-
-  // Persist into Firestore Database
-  publishComponentToFirestore(data.component).catch((err) => {
+  // 4. Persist to Firestore
+  publishComponentToFirestore(newComponent).catch((err) => {
     console.warn('Firestore write warning:', err);
   });
 
-  return data.component;
+  return newComponent;
 }
 
 export async function deleteComponent(id: string, email: string): Promise<boolean> {
@@ -405,45 +542,67 @@ export async function unlockAndCopyComponent(
   nextResetTimestamp: number;
   message: string;
 }> {
-  const res = await fetch(`/api/components/${id}/copy`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
-  });
+  let serverData = null;
+  try {
+    const res = await fetch(`/api/components/${id}/copy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
 
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data.error || 'Failed to copy component. Check daily quota.');
+    if (res.ok) {
+      serverData = await res.json();
+    } else {
+      const errData = await res.json().catch(() => null);
+      if (errData?.error && errData.error.includes('Daily copy credit exhausted')) {
+        throw new Error(errData.error);
+      }
+    }
+  } catch (e: any) {
+    if (e.message && e.message.includes('Daily copy credit exhausted')) {
+      throw e;
+    }
   }
 
-  // Update local storage user session
+  // Update user session and local vault
   const currentUser = getStoredUser();
   if (currentUser) {
     if (!currentUser.unlockedComponentIds.includes(id)) {
       currentUser.unlockedComponentIds.push(id);
     }
-    currentUser.copiedTodayCount = data.copiedTodayCount || (currentUser.copiedTodayCount || 0) + 1;
+    currentUser.copiedTodayCount = serverData?.copiedTodayCount || (currentUser.copiedTodayCount || 0) + 1;
     saveStoredUser(currentUser);
+    saveUserToVault(currentUser);
   }
 
-  return data;
+  const comp = await fetchComponentById(id, email);
+  const remaining = serverData?.remainingQuota ?? Math.max(0, 2 - (currentUser?.copiedTodayCount || 1));
+
+  return {
+    success: true,
+    code: serverData?.code || comp?.code || '',
+    copyCount: serverData?.copyCount || (comp?.copyCount || 0) + 1,
+    remainingQuota: remaining,
+    nextResetTimestamp: serverData?.nextResetTimestamp || new Date().setUTCHours(24, 0, 0, 0),
+    message: serverData?.message || `Code copied to clipboard! (${currentUser?.copiedTodayCount || 1}/2 daily credits used)`,
+  };
 }
 
 export async function getQuotaStatus(email: string): Promise<CopyQuotaResponse> {
   try {
     const res = await fetch(`/api/auth/quota?email=${encodeURIComponent(email)}`);
-    if (!res.ok) throw new Error('Quota fetch failed');
-    return await res.json();
-  } catch (e) {
-    const user = getStoredUser();
-    const count = user?.copiedTodayCount || 0;
-    return {
-      canCopy: count < 2,
-      copiedTodayCount: count,
-      maxDailyCopies: 2,
-      remainingCopies: Math.max(0, 2 - count),
-      nextResetTimestamp: new Date().setUTCHours(24, 0, 0, 0),
-    };
-  }
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {}
+
+  const user = getStoredUser() || getUserFromVault(email);
+  const count = user?.copiedTodayCount || 0;
+  return {
+    canCopy: count < 2,
+    copiedTodayCount: count,
+    maxDailyCopies: 2,
+    remainingCopies: Math.max(0, 2 - count),
+    nextResetTimestamp: new Date().setUTCHours(24, 0, 0, 0),
+  };
 }
