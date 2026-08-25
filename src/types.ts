@@ -56,12 +56,14 @@ export interface UIComponentItem {
   // Interactive component identifier for live client-side sandbox render
   interactiveType?: string;
   featured?: boolean;
+  isUnlocked?: boolean;
 }
 
 export interface UserSession {
   email: string;
   name: string;
   avatar: string;
+  bio?: string;
   joinedAt: string;
   // Daily copy tracking (2 copies per day reset at UTC midnight)
   lastCopiedTimestamp?: number;
@@ -70,6 +72,35 @@ export interface UserSession {
   wishlistComponentIds: string[];
   likedComponentIds: string[];
   isFirstLogin?: boolean;
+}
+
+export interface PlatformStats {
+  totalComponents: number;
+  totalCopies: number;
+  totalLikes: number;
+  totalViews: number;
+  activeCreators: number;
+  categoriesCount: number;
+}
+
+export interface CategoryCount {
+  name: ComponentCategory;
+  count: number;
+  icon?: string;
+}
+
+export interface CreatorLeaderboardItem {
+  email: string;
+  name: string;
+  avatar: string;
+  bio?: string;
+  joinedAt: string;
+  componentsCount: number;
+  totalLikes: number;
+  totalCopies: number;
+  totalViews: number;
+  rank: number;
+  badge?: string;
 }
 
 export interface CopyQuotaResponse {
@@ -82,4 +113,6 @@ export interface CopyQuotaResponse {
   message?: string;
   isLoggedIn?: boolean;
 }
+
+
 

@@ -12,13 +12,15 @@ import {
   X,
   PanelLeftClose,
   PanelLeftOpen,
+  Zap,
+  Trophy,
 } from 'lucide-react';
 import { UserSession } from '../types';
 import { getStoredSidebarCollapsed, saveStoredSidebarCollapsed } from '../services/api';
 
 interface Props {
-  currentView: 'home' | 'showcase' | 'dashboard';
-  onNavigate: (view: 'home' | 'showcase' | 'dashboard') => void;
+  currentView: 'home' | 'showcase' | 'dashboard' | 'leaderboard';
+  onNavigate: (view: 'home' | 'showcase' | 'dashboard' | 'leaderboard') => void;
   currentUser: UserSession | null;
   onOpenAuth: () => void;
   onLogout: () => void;
@@ -54,81 +56,76 @@ export function Sidebar({
   const remainingCredits = currentUser ? Math.max(0, 2 - currentUser.copiedTodayCount) : 2;
 
   const navItems = [
-    { id: 'home', label: 'Home & About', icon: Home, badge: 'Hub' },
-    { id: 'showcase', label: 'Showcase Vault', icon: LayoutGrid, badge: 'Live' },
-    {
-      id: 'dashboard',
-      label: 'My Library & Upload',
-      icon: BookmarkCheck,
-      badge: currentUser?.wishlistComponentIds?.length ? `${currentUser.wishlistComponentIds.length}` : undefined,
-    },
-  ];
+    { id: 'home', label: 'Home', icon: Home },
+    { id: 'showcase', label: 'Showcase', icon: LayoutGrid },
+    { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
+    { id: 'dashboard', label: 'Library', icon: BookmarkCheck },
+  ] as const;
 
-  const handleNavClick = (view: 'home' | 'showcase' | 'dashboard') => {
+  const handleNavClick = (view: 'home' | 'showcase' | 'dashboard' | 'leaderboard') => {
     onNavigate(view);
     setMobileOpen(false);
   };
 
   const desktopSidebarContent = (
-    <div className={`h-full flex flex-col justify-between p-4 bg-[#080808] text-[#E5E5E5] border-r border-[#1E1E1E] transition-all duration-300 ${
+    <div className={`h-full flex flex-col justify-between p-3 bg-[#080808] text-[#E5E5E5] border-r border-[#1A1A1A] transition-all duration-300 ${
       isCollapsed ? 'items-center' : ''
     }`}>
       {/* Top Brand & Links */}
-      <div className={`space-y-5 w-full ${isCollapsed ? 'flex flex-col items-center' : ''}`}>
-        {/* Brand Header + Collapse Button */}
+      <div className={`space-y-4 w-full ${isCollapsed ? 'flex flex-col items-center' : ''}`}>
+        {/* Brand Header */}
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-1`}>
           <div
             onClick={() => handleNavClick('home')}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-2.5 cursor-pointer group"
             title="Lazy UI Home"
           >
-            <div className="relative w-9 h-9 rounded-xl bg-[#121212] border border-[#2A2A2A] flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.05)] group-hover:border-zinc-400 transition-colors shrink-0">
-              <Sparkles className="w-4 h-4 text-zinc-300 group-hover:rotate-12 transition-transform" />
-              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-zinc-400 to-transparent opacity-60" />
+            <div className="relative w-8 h-8 rounded-lg bg-[#121212] border border-[#262626] flex items-center justify-center group-hover:border-zinc-500 transition-all duration-300 shrink-0">
+              <Sparkles className="w-3.5 h-3.5 text-zinc-300 group-hover:rotate-12 transition-transform duration-300" />
+              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-zinc-400/40 to-transparent" />
             </div>
             {!isCollapsed && (
               <div>
-                <span className="text-base font-black tracking-tight text-white font-sans">
-                  LAZY <span className="text-zinc-400">UI</span>
+                <span className="text-sm font-black tracking-tight text-white font-sans">
+                  LAZY <span className="text-zinc-500">UI</span>
                 </span>
-                <span className="block text-[9px] font-mono text-zinc-400 tracking-wider uppercase">
-                  Live Code Vault
+                <span className="block text-[9px] font-mono text-zinc-500 tracking-wider uppercase">
+                  Component Vault
                 </span>
               </div>
             )}
           </div>
 
-          {/* Desktop Compress/Expand Button */}
           {!isCollapsed && (
             <button
               onClick={toggleCollapse}
-              className="p-1.5 rounded-lg bg-[#121212] border border-[#262626] text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors cursor-pointer"
-              title="Compress menu sidebar"
+              className="p-1.5 rounded-lg bg-transparent border border-transparent text-zinc-500 hover:text-white hover:border-zinc-700 transition-all cursor-pointer"
+              title="Collapse sidebar"
             >
-              <PanelLeftClose className="w-4 h-4" />
+              <PanelLeftClose className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
 
-        {/* Collapsed Expand Toggle Button */}
+        {/* Collapsed Expand Toggle */}
         {isCollapsed && (
           <button
             onClick={toggleCollapse}
-            className="p-2 rounded-xl bg-[#121212] border border-[#262626] text-zinc-400 hover:text-white hover:border-zinc-400 transition-all cursor-pointer shadow-sm"
-            title="Expand menu sidebar"
+            className="p-2 rounded-lg bg-[#121212] border border-[#262626] text-zinc-500 hover:text-white hover:border-zinc-600 transition-all cursor-pointer"
+            title="Expand sidebar"
           >
-            <PanelLeftOpen className="w-4 h-4 text-zinc-300" />
+            <PanelLeftOpen className="w-3.5 h-3.5" />
           </button>
         )}
 
-        {/* Navigation Menu */}
-        <div className="space-y-1.5 pt-2 w-full">
+        {/* Navigation */}
+        <div className={`space-y-1 w-full ${isCollapsed ? '' : 'pt-1'}`}>
           {!isCollapsed && (
-            <p className="px-3 text-[10px] font-mono uppercase tracking-widest text-zinc-400 font-bold">
-              Navigation
+            <p className="px-2.5 mb-2 text-[9px] font-mono uppercase tracking-[0.15em] text-zinc-500 font-bold">
+              Navigate
             </p>
           )}
-          <nav className="space-y-1 w-full">
+          <nav className="space-y-0.5 w-full">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentView === item.id;
@@ -138,99 +135,96 @@ export function Sidebar({
                   onClick={() => handleNavClick(item.id as any)}
                   title={item.label}
                   className={`w-full flex items-center ${
-                    isCollapsed ? 'justify-center px-0 py-3' : 'justify-between px-3 py-2.5'
-                  } rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    isCollapsed ? 'justify-center px-0 py-2.5' : 'justify-start px-2.5 py-2'
+                  } rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer ${
                     isActive
-                      ? 'bg-zinc-800 text-white border border-zinc-600 shadow-[0_0_15px_rgba(255,255,255,0.08)]'
-                      : 'text-zinc-400 hover:text-white hover:bg-[#141414]'
+                      ? 'bg-white/10 text-white border border-white/10'
+                      : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03] border border-transparent'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
                     <Icon
-                      className={`w-4 h-4 shrink-0 ${
-                        isActive ? 'text-white' : 'text-zinc-400'
+                      className={`w-4 h-4 shrink-0 transition-colors ${
+                        isActive ? 'text-white' : 'text-zinc-500'
                       }`}
                     />
                     {!isCollapsed && <span>{item.label}</span>}
                   </div>
-                  {!isCollapsed && item.badge && (
-                    <span
-                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
-                        isActive
-                          ? 'bg-zinc-900 text-zinc-200 border-zinc-700'
-                          : 'bg-[#101010] text-zinc-400 border-[#222222]'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        {/* Daily Credit Status Indicator */}
+        {/* Daily Credits */}
         {!isCollapsed ? (
-          <div className="p-3.5 rounded-xl bg-[#0F0F0F] border border-[#222222] space-y-2 w-full">
+          <div className="p-3 rounded-xl bg-[#0D0D0D] border border-[#1E1E1E] space-y-2 w-full">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-zinc-400" /> Daily Credits
+              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Zap className="w-3 h-3" /> Credits
               </span>
-              <span
-                className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-                  canCopy
-                    ? 'bg-zinc-900 border-zinc-700 text-zinc-200'
-                    : 'bg-zinc-950 border-zinc-800 text-zinc-400'
-                }`}
-              >
-                {canCopy ? `${remainingCredits}/2 Ready` : '0/2 Used'}
+              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
+                canCopy
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
+              }`}>
+                {canCopy ? `${remainingCredits}/2` : '0/2'}
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400 leading-relaxed">
+            {/* Progress bar */}
+            <div className="w-full h-1 rounded-full bg-zinc-800/80 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${((currentUser?.copiedTodayCount || 0) / 2) * 100}%`,
+                  background: canCopy ? 'linear-gradient(90deg, #34d399, #10b981)' : '#52525b',
+                }}
+              />
+            </div>
+            <p className="text-[10px] text-zinc-500 leading-relaxed">
               {canCopy
-                ? `${remainingCredits} credit${remainingCredits > 1 ? 's' : ''} available to copy source code today.`
-                : 'Daily copy limit reached. Resets at midnight UTC.'}
+                ? `${remainingCredits} credit${remainingCredits !== 1 ? 's' : ''} remaining today.`
+                : 'Resets at midnight UTC.'}
             </p>
           </div>
         ) : (
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center border cursor-help ${
+            className={`w-9 h-9 rounded-lg flex items-center justify-center cursor-help transition-all ${
               canCopy
-                ? 'bg-zinc-900 border-zinc-700 text-zinc-200'
-                : 'bg-zinc-950 border-zinc-800 text-zinc-400'
+                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                : 'bg-zinc-900 border border-zinc-800 text-zinc-500'
             }`}
-            title={canCopy ? `${remainingCredits}/2 Daily Copy Credits Available` : '0/2 Daily Copy Credits Used Today'}
+            title={canCopy ? `${remainingCredits}/2 credits remaining` : '0/2 credits used today'}
           >
-            <Clock className="w-4 h-4" />
+            <Zap className="w-3.5 h-3.5" />
           </div>
         )}
       </div>
 
       {/* Bottom User Area */}
-      <div className={`pt-4 border-t border-[#1E1E1E] space-y-2.5 w-full ${isCollapsed ? 'flex flex-col items-center' : ''}`}>
+      <div className={`pt-3 border-t border-[#1A1A1A] space-y-2 w-full ${isCollapsed ? 'flex flex-col items-center' : ''}`}>
         {currentUser ? (
-          <div className="space-y-2 w-full">
+          <div className="space-y-1.5 w-full">
             {!isCollapsed ? (
-              <div className="flex items-center gap-3 p-2 rounded-xl bg-[#111111] border border-[#242424]">
+              <div className="flex items-center gap-2.5 p-2 rounded-lg bg-[#0D0D0D] border border-[#1E1E1E]">
                 <img
                   src={currentUser.avatar}
                   alt={currentUser.name}
                   referrerPolicy="no-referrer"
-                  className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700 object-cover shrink-0"
+                  className="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700/50 object-cover shrink-0"
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-white truncate font-sans">{currentUser.name}</p>
-                  <p className="text-[10px] font-mono text-zinc-400 truncate">{currentUser.email}</p>
+                  <p className="text-[11px] font-bold text-white truncate">{currentUser.name}</p>
+                  <p className="text-[9px] font-mono text-zinc-500 truncate">{currentUser.email}</p>
                 </div>
               </div>
             ) : (
-              <div className="flex justify-center" title={`${currentUser.name} (${currentUser.email})`}>
+              <div className="flex justify-center" title={`${currentUser.name}`}>
                 <img
                   src={currentUser.avatar}
                   alt={currentUser.name}
                   referrerPolicy="no-referrer"
-                  className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-700 object-cover"
+                  className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700/50 object-cover"
                 />
               </div>
             )}
@@ -239,8 +233,8 @@ export function Sidebar({
               onClick={onLogout}
               title="Log Out"
               className={`w-full flex items-center ${
-                isCollapsed ? 'justify-center p-2.5' : 'justify-center gap-2 px-3 py-2'
-              } rounded-xl bg-[#111111] hover:bg-zinc-900 border border-[#242424] hover:border-zinc-600 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer`}
+                isCollapsed ? 'justify-center p-2' : 'justify-center gap-2 px-2.5 py-1.5'
+              } rounded-lg bg-transparent hover:bg-white/[0.03] border border-transparent hover:border-zinc-800 text-[11px] font-medium text-zinc-500 hover:text-zinc-300 transition-all cursor-pointer`}
             >
               <LogOut className="w-3.5 h-3.5" />
               {!isCollapsed && <span>Log Out</span>}
@@ -250,18 +244,18 @@ export function Sidebar({
           <button
             onClick={onOpenAuth}
             title="Sign In"
-            className={`w-full py-2.5 ${
+            className={`w-full py-2 ${
               isCollapsed ? 'px-2 flex justify-center' : 'px-3 flex items-center justify-center gap-2'
-            } rounded-xl bg-white hover:bg-zinc-200 border border-white text-xs font-semibold text-black transition-colors cursor-pointer shadow-[0_0_15px_rgba(255,255,255,0.15)] active:scale-95`}
+            } rounded-lg bg-white hover:bg-zinc-200 text-[11px] font-semibold text-black transition-all cursor-pointer active:scale-[0.98]`}
           >
-            <Mail className="w-4 h-4 text-black" />
+            <Mail className="w-3.5 h-3.5 text-black" />
             {!isCollapsed && <span>Sign In</span>}
           </button>
         )}
 
         {!isCollapsed && (
-          <p className="text-[10px] text-center text-zinc-500 font-mono">
-            Lazy UI Live Code Vault
+          <p className="text-[9px] text-center text-zinc-600 font-mono pt-1">
+            v4.9.0 · Live Code Vault
           </p>
         )}
       </div>
@@ -273,56 +267,55 @@ export function Sidebar({
       {/* Desktop Sidebar */}
       <aside
         className={`hidden md:flex flex-col h-screen sticky top-0 z-30 shrink-0 transition-all duration-300 ${
-          isCollapsed ? 'w-20' : 'w-64 lg:w-72'
+          isCollapsed ? 'w-[60px]' : 'w-56 lg:w-60'
         }`}
       >
         {desktopSidebarContent}
       </aside>
 
       {/* Mobile Top Header Bar */}
-      <div className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3 bg-[#080808]/95 backdrop-blur-md border-b border-[#1E1E1E]">
+      <div className="md:hidden sticky top-0 z-40 flex items-center justify-between px-3 py-2.5 bg-[#080808]/95 backdrop-blur-md border-b border-[#1A1A1A]">
         <div
           onClick={() => onNavigate('home')}
-          className="flex items-center gap-2.5 cursor-pointer"
+          className="flex items-center gap-2 cursor-pointer"
         >
-          <div className="w-7 h-7 rounded-lg bg-[#121212] border border-[#2A2A2A] flex items-center justify-center">
-            <Sparkles className="w-3.5 h-3.5 text-zinc-300" />
+          <div className="w-6 h-6 rounded-md bg-[#121212] border border-[#262626] flex items-center justify-center">
+            <Sparkles className="w-3 h-3 text-zinc-300" />
           </div>
-          <span className="text-sm font-extrabold text-white">
-            LAZY <span className="text-zinc-400">UI</span>
+          <span className="text-xs font-extrabold text-white">
+            LAZY <span className="text-zinc-500">UI</span>
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {currentUser ? (
             <img
               src={currentUser.avatar}
               alt={currentUser.name}
               referrerPolicy="no-referrer"
-              className="w-7 h-7 rounded-lg border border-[#2F2F2F] object-cover"
+              className="w-6 h-6 rounded-md border border-zinc-700/50 object-cover"
             />
           ) : (
             <button
               onClick={onOpenAuth}
-              className="px-2.5 py-1.5 rounded-lg bg-white text-xs font-semibold text-black"
+              className="px-2 py-1 rounded-md bg-white text-[10px] font-semibold text-black"
             >
               Sign In
             </button>
           )}
           <button
             onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-lg bg-[#141414] border border-[#282828] text-[#E5E5E5]"
+            className="p-1.5 rounded-md bg-[#141414] border border-[#262626] text-zinc-300"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Mobile Drawer Overlay */}
+      {/* Mobile Drawer */}
       <AnimatePresence>
         {mobileOpen && (
           <div className="fixed inset-0 z-50 md:hidden flex">
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -330,41 +323,39 @@ export function Sidebar({
               onClick={() => setMobileOpen(false)}
               className="fixed inset-0 bg-black/80 backdrop-blur-sm"
             />
-
-            {/* Drawer */}
             <motion.div
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-4/5 max-w-xs h-full z-10"
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="relative w-[280px] h-full z-10"
             >
               <button
                 onClick={() => setMobileOpen(false)}
-                className="absolute top-4 right-4 p-1.5 rounded-lg bg-[#1A1A1A] text-zinc-400 hover:text-white z-20"
+                className="absolute top-3 right-3 p-1.5 rounded-md bg-[#1A1A1A] text-zinc-400 hover:text-white z-20"
               >
                 <X className="w-4 h-4" />
               </button>
-              <div className="h-full flex flex-col justify-between p-5 bg-[#080808] text-[#E5E5E5] border-r border-[#1E1E1E]">
-                <div className="space-y-6">
+              <div className="h-full flex flex-col justify-between p-4 bg-[#080808] text-[#E5E5E5] border-r border-[#1A1A1A]">
+                <div className="space-y-5">
                   <div
                     onClick={() => handleNavClick('home')}
-                    className="flex items-center gap-3 cursor-pointer"
+                    className="flex items-center gap-2.5 cursor-pointer"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-[#121212] border border-[#2A2A2A] flex items-center justify-center">
-                      <Sparkles className="w-4 h-4 text-zinc-300" />
+                    <div className="w-8 h-8 rounded-lg bg-[#121212] border border-[#262626] flex items-center justify-center">
+                      <Sparkles className="w-3.5 h-3.5 text-zinc-300" />
                     </div>
                     <div>
-                      <span className="text-base font-black tracking-tight text-white font-sans">
-                        LAZY <span className="text-zinc-400">UI</span>
+                      <span className="text-sm font-black tracking-tight text-white font-sans">
+                        LAZY <span className="text-zinc-500">UI</span>
                       </span>
-                      <span className="block text-[10px] font-mono text-zinc-400 tracking-wider uppercase">
-                        Live Code Vault
+                      <span className="block text-[9px] font-mono text-zinc-500 tracking-wider uppercase">
+                        Component Vault
                       </span>
                     </div>
                   </div>
 
-                  <nav className="space-y-1">
+                  <nav className="space-y-0.5">
                     {navItems.map((item) => {
                       const Icon = item.icon;
                       const isActive = currentView === item.id;
@@ -372,40 +363,60 @@ export function Sidebar({
                         <button
                           key={item.id}
                           onClick={() => handleNavClick(item.id as any)}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold ${
+                          className={`w-full flex items-center justify-start px-2.5 py-2 rounded-lg text-xs font-medium transition-all ${
                             isActive
-                              ? 'bg-zinc-800 text-white border border-zinc-600'
-                              : 'text-zinc-400 hover:text-[#E5E5E5]'
+                              ? 'bg-white/10 text-white border border-white/10'
+                              : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03] border border-transparent'
                           }`}
                         >
                           <div className="flex items-center gap-2.5">
-                            <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-zinc-400'}`} />
+                            <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-zinc-500'}`} />
                             <span>{item.label}</span>
                           </div>
-                          {item.badge && (
-                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#161616] text-zinc-200 border border-zinc-700">
-                              {item.badge}
-                            </span>
-                          )}
                         </button>
                       );
                     })}
                   </nav>
+
+                  {/* Credits in mobile */}
+                  <div className="p-3 rounded-xl bg-[#0D0D0D] border border-[#1E1E1E] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <Zap className="w-3 h-3" /> Credits
+                      </span>
+                      <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
+                        canCopy
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
+                      }`}>
+                        {canCopy ? `${remainingCredits}/2` : '0/2'}
+                      </span>
+                    </div>
+                    <div className="w-full h-1 rounded-full bg-zinc-800/80 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${((currentUser?.copiedTodayCount || 0) / 2) * 100}%`,
+                          background: canCopy ? 'linear-gradient(90deg, #34d399, #10b981)' : '#52525b',
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="pt-4 border-t border-[#1E1E1E] space-y-2">
+                <div className="pt-3 border-t border-[#1A1A1A] space-y-2">
                   {currentUser ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3 p-2 rounded-xl bg-[#121212] border border-[#262626]">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2.5 p-2 rounded-lg bg-[#0D0D0D] border border-[#1E1E1E]">
                         <img
                           src={currentUser.avatar}
                           alt={currentUser.name}
                           referrerPolicy="no-referrer"
-                          className="w-8 h-8 rounded-lg object-cover"
+                          className="w-7 h-7 rounded-lg object-cover"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-white truncate">{currentUser.name}</p>
-                          <p className="text-[10px] font-mono text-zinc-400 truncate">{currentUser.email}</p>
+                          <p className="text-[11px] font-bold text-white truncate">{currentUser.name}</p>
+                          <p className="text-[9px] font-mono text-zinc-500 truncate">{currentUser.email}</p>
                         </div>
                       </div>
                       <button
@@ -413,7 +424,7 @@ export function Sidebar({
                           setMobileOpen(false);
                           onLogout();
                         }}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-[#121212] text-xs text-zinc-400 hover:text-white"
+                        className="w-full flex items-center justify-center gap-2 px-2.5 py-1.5 rounded-lg bg-transparent hover:bg-white/[0.03] text-[11px] text-zinc-500 hover:text-zinc-300 transition-all"
                       >
                         <LogOut className="w-3.5 h-3.5" /> Log Out
                       </button>
@@ -424,9 +435,9 @@ export function Sidebar({
                         setMobileOpen(false);
                         onOpenAuth();
                       }}
-                      className="w-full py-2.5 px-3 rounded-xl bg-white text-xs font-semibold text-black flex items-center justify-center gap-2"
+                      className="w-full py-2 px-3 rounded-lg bg-white text-[11px] font-semibold text-black flex items-center justify-center gap-2"
                     >
-                      <Mail className="w-4 h-4 text-black" /> Sign In
+                      <Mail className="w-3.5 h-3.5 text-black" /> Sign In
                     </button>
                   )}
                 </div>

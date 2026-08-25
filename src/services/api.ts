@@ -1,4 +1,4 @@
-import { UIComponentItem, UserSession, CopyQuotaResponse } from '../types';
+import { UIComponentItem, UserSession, CopyQuotaResponse, PlatformStats, CategoryCount, CreatorLeaderboardItem } from '../types';
 import { SEED_COMPONENTS } from '../data/seedComponents';
 import {
   syncUserInFirestore,
@@ -303,34 +303,82 @@ export async function fetchComponents(params?: {
   if (params?.email) query.set('email', params.email);
 
   const localCachedUploads = getStoredUploadedComponents();
+  const componentMap = new Map<string, UIComponentItem>();
 
-  try {
-    const res = await fetch(`/api/components?${query.toString()}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data.components)) {
-        // Merge with local cached uploads if any are missing
-        const serverList: UIComponentItem[] = data.components;
-        const serverIds = new Set(serverList.map((c) => c.id));
-        const missingLocal = localCachedUploads.filter((c) => !serverIds.has(c.id));
-        return [...missingLocal, ...serverList];
-      }
-    }
-  } catch (e) {
-    // Fallback to Firestore or Local Cache
+  // 1. Seed components as base
+  for (const seed of SEED_COMPONENTS) {
+    componentMap.set(seed.id, seed);
   }
 
-  try {
-    const fromFirestore = await fetchComponentsFromFirestore();
-    if (fromFirestore && fromFirestore.length > 0) {
-      const fsIds = new Set(fromFirestore.map((c) => c.id));
-      const missingLocal = localCachedUploads.filter((c) => !fsIds.has(c.id));
-      return [...missingLocal, ...fromFirestore];
+  // 2. Fetch server components and Firestore components concurrently
+  const [serverRes, firestoreRes] = await Promise.allSettled([
+    fetch(`/api/components?${query.toString()}`).then((r) => (r.ok ? r.json() : null)),
+    fetchComponentsFromFirestore(),
+  ]);
+
+  if (serverRes.status === 'fulfilled' && serverRes.value && Array.isArray(serverRes.value.components)) {
+    for (const comp of serverRes.value.components) {
+      componentMap.set(comp.id, comp);
     }
-    return [...localCachedUploads, ...SEED_COMPONENTS];
-  } catch (err) {
-    return [...localCachedUploads, ...SEED_COMPONENTS];
   }
+
+  if (firestoreRes.status === 'fulfilled' && Array.isArray(firestoreRes.value)) {
+    for (const comp of firestoreRes.value) {
+      const existing = componentMap.get(comp.id);
+      componentMap.set(comp.id, {
+        ...comp,
+        viewsCount: Math.max(comp.viewsCount || 1, existing?.viewsCount || 1),
+        likesCount: Math.max(comp.likesCount || 0, existing?.likesCount || 0),
+        wishlistCount: Math.max(comp.wishlistCount || 0, existing?.wishlistCount || 0),
+        copyCount: Math.max(comp.copyCount || 0, existing?.copyCount || 0),
+      });
+    }
+  }
+
+  // 3. Merge local cached uploads
+  for (const local of localCachedUploads) {
+    if (!componentMap.has(local.id)) {
+      componentMap.set(local.id, local);
+    }
+  }
+
+  let list = Array.from(componentMap.values());
+
+  // Apply filters
+  if (params?.category && params.category !== 'All') {
+    list = list.filter((c) => c.category === params.category);
+  }
+
+  if (params?.framework && params.framework !== 'All') {
+    list = list.filter((c) => c.framework === params.framework);
+  }
+
+  if (params?.search && params.search.trim()) {
+    const q = params.search.toLowerCase();
+    list = list.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        c.description.toLowerCase().includes(q) ||
+        c.tags.some((t) => t.toLowerCase().includes(q)) ||
+        c.authorName.toLowerCase().includes(q) ||
+        c.category.toLowerCase().includes(q)
+    );
+  }
+
+  // Apply sort
+  if (params?.sort === 'popular') {
+    list.sort((a, b) => (b.likesCount || 0) + (b.copyCount || 0) * 2 + (b.viewsCount || 0) * 0.1 - ((a.likesCount || 0) + (a.copyCount || 0) * 2 + (a.viewsCount || 0) * 0.1));
+  } else if (params?.sort === 'views') {
+    list.sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0));
+  } else if (params?.sort === 'copies') {
+    list.sort((a, b) => (b.copyCount || 0) - (a.copyCount || 0));
+  } else if (params?.sort === 'likes') {
+    list.sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0));
+  } else {
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  return list;
 }
 
 export async function fetchComponentById(id: string, email?: string): Promise<UIComponentItem | null> {
@@ -479,7 +527,7 @@ export async function uploadComponent(componentData: Partial<UIComponentItem>): 
     const res = await fetch('/api/components', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(componentData),
+      body: JSON.stringify(newComponent),
     });
     if (res.ok) {
       const data = await res.json();
@@ -606,3 +654,148 @@ export async function getQuotaStatus(email: string): Promise<CopyQuotaResponse> 
     nextResetTimestamp: new Date().setUTCHours(24, 0, 0, 0),
   };
 }
+
+export async function fetchPlatformStats(): Promise<PlatformStats> {
+  try {
+    const res = await fetch('/api/stats');
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {}
+
+  // Fallback computation
+  const comps = [...getStoredUploadedComponents(), ...SEED_COMPONENTS];
+  let totalCopies = 0;
+  let totalLikes = 0;
+  let totalViews = 0;
+  const authors = new Set<string>();
+  const categories = new Set<string>();
+
+  for (const c of comps) {
+    totalCopies += c.copyCount || 0;
+    totalLikes += c.likesCount || 0;
+    totalViews += c.viewsCount || 0;
+    if (c.authorEmail) authors.add(c.authorEmail.toLowerCase());
+    if (c.category) categories.add(c.category);
+  }
+
+  return {
+    totalComponents: comps.length,
+    totalCopies: Math.max(totalCopies, 128),
+    totalLikes: Math.max(totalLikes, 342),
+    totalViews: Math.max(totalViews, 1250),
+    activeCreators: Math.max(authors.size, 18),
+    categoriesCount: categories.size || 16,
+  };
+}
+
+export async function fetchCategoriesWithCounts(): Promise<CategoryCount[]> {
+  try {
+    const res = await fetch('/api/categories');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.categories)) {
+        return data.categories;
+      }
+    }
+  } catch (e) {}
+
+  const comps = [...getStoredUploadedComponents(), ...SEED_COMPONENTS];
+  const map = new Map<string, number>();
+  for (const c of comps) {
+    map.set(c.category, (map.get(c.category) || 0) + 1);
+  }
+
+  return Array.from(map.entries()).map(([name, count]) => ({
+    name: name as any,
+    count,
+  }));
+}
+
+export async function updateUserProfile(
+  email: string,
+  updates: { name?: string; avatar?: string; bio?: string }
+): Promise<UserSession> {
+  const current = getStoredUser();
+  const cleanEmail = email.trim().toLowerCase();
+  const defaultAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanEmail}&backgroundColor=09090b`;
+
+  const updated: UserSession = {
+    email: cleanEmail,
+    name: updates.name || current?.name || cleanEmail.split('@')[0],
+    avatar: updates.avatar || current?.avatar || defaultAvatar,
+    bio: updates.bio !== undefined ? updates.bio : current?.bio,
+    joinedAt: current?.joinedAt || new Date().toISOString(),
+    copiedTodayCount: current?.copiedTodayCount || 0,
+    unlockedComponentIds: current?.unlockedComponentIds || [],
+    wishlistComponentIds: current?.wishlistComponentIds || [],
+    likedComponentIds: current?.likedComponentIds || [],
+  };
+
+  saveStoredUser(updated);
+  saveUserToVault(updated);
+
+  try {
+    await fetch('/api/auth/update-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, ...updates }),
+    });
+  } catch (e) {}
+
+  if (updates.avatar) {
+    updateUserAvatarInFirestore(email, updates.avatar).catch(() => {});
+  }
+
+  return updated;
+}
+
+export async function fetchCreatorLeaderboard(): Promise<CreatorLeaderboardItem[]> {
+  try {
+    const res = await fetch('/api/creators/leaderboard');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.creators)) {
+        return data.creators;
+      }
+    }
+  } catch (e) {}
+
+  // Fallback calculation from components
+  const comps = [...getStoredUploadedComponents(), ...SEED_COMPONENTS];
+  const map = new Map<string, { email: string; name: string; avatar: string; count: number; likes: number; copies: number; views: number }>();
+  for (const c of comps) {
+    const email = (c.authorEmail || 'creator@lazyui.dev').toLowerCase();
+    const existing = map.get(email) || {
+      email,
+      name: c.authorName || email.split('@')[0],
+      avatar: c.authorAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${email}&backgroundColor=09090b`,
+      count: 0,
+      likes: 0,
+      copies: 0,
+      views: 0,
+    };
+    existing.count += 1;
+    existing.likes += (c.likesCount || 0);
+    existing.copies += (c.copyCount || 0);
+    existing.views += (c.viewsCount || 0);
+    map.set(email, existing);
+  }
+
+  const list = Array.from(map.values()).sort((a, b) => (b.count * 50 + b.likes * 10 + b.copies * 20) - (a.count * 50 + a.likes * 10 + a.copies * 20));
+
+  return list.map((item, idx) => ({
+    email: item.email,
+    name: item.name,
+    avatar: item.avatar,
+    joinedAt: new Date().toISOString(),
+    componentsCount: item.count,
+    totalLikes: item.likes,
+    totalCopies: item.copies,
+    totalViews: item.views,
+    rank: idx + 1,
+    badge: idx === 0 ? '👑 Grandmaster Creator' : idx === 1 ? '🥈 Master Architect' : idx === 2 ? '🥉 Elite Contributor' : '⚡ Pro Builder',
+  }));
+}
+
+

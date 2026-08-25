@@ -12,6 +12,7 @@ import {
   arrayUnion,
   arrayRemove,
   increment,
+  onSnapshot,
 } from 'firebase/firestore';
 import {
   getAuth,
@@ -240,6 +241,34 @@ export async function deleteComponentFromFirestore(compId: string): Promise<void
     await deleteDoc(compRef);
   } catch (err) {
     console.warn('Firestore delete error:', err);
+  }
+}
+
+/**
+ * Listen to real-time component additions / updates worldwide from Firestore
+ */
+export function subscribeToComponentsInFirestore(callback: (components: UIComponentItem[]) => void) {
+  try {
+    const compCol = collection(db, 'components');
+    return onSnapshot(
+      compCol,
+      (snap) => {
+        if (!snap.empty) {
+          const items: UIComponentItem[] = [];
+          snap.forEach((docSnap) => {
+            items.push(docSnap.data() as UIComponentItem);
+          });
+          items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          callback(items);
+        }
+      },
+      (err) => {
+        console.warn('Firestore live components snapshot note:', err);
+      }
+    );
+  } catch (err) {
+    console.warn('Failed to subscribe to Firestore components:', err);
+    return () => {};
   }
 }
 

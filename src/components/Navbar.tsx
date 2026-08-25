@@ -1,25 +1,25 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles,
   Layers,
-  Palette,
   Upload,
-  User,
   LogOut,
   Clock,
-  Unlock,
   ShieldCheck,
   Menu,
   X,
   Plus,
   Compass,
+  Zap,
+  Code2,
+  Trophy,
 } from 'lucide-react';
 import { UserSession } from '../types';
 
 interface Props {
-  currentView: 'home' | 'showcase' | 'themes' | 'dashboard';
-  onNavigate: (view: 'home' | 'showcase' | 'themes' | 'dashboard') => void;
+  currentView: 'home' | 'showcase' | 'dashboard' | 'leaderboard';
+  onNavigate: (view: 'home' | 'showcase' | 'dashboard' | 'leaderboard') => void;
   currentUser: UserSession | null;
   onOpenAuth: () => void;
   onOpenUpload: () => void;
@@ -39,9 +39,9 @@ export function Navbar({
   const remainingCredits = currentUser ? Math.max(0, 2 - (currentUser.copiedTodayCount || 0)) : 2;
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-[#050505]/90 backdrop-blur-xl border-b border-[#222222] shadow-[0_4px_30px_rgba(0,0,0,0.9)]">
+    <header className="sticky top-0 z-50 w-full bg-black/80 backdrop-blur-2xl border-b border-zinc-800/80 shadow-[0_4px_30px_rgba(0,0,0,0.8)]">
       {/* Specular Rim Light */}
-      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#C0C0C0] to-transparent opacity-40" />
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-zinc-400/50 to-transparent" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         {/* Brand Logo */}
@@ -50,34 +50,38 @@ export function Navbar({
             onNavigate('home');
             setMobileMenuOpen(false);
           }}
-          className="flex items-center gap-3 cursor-pointer group shrink-0"
+          className="flex items-center gap-3 cursor-pointer group shrink-0 select-none"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-b from-[#1A1A1A] to-[#0A0A0A] border border-[#333333] flex items-center justify-center shadow-[0_0_15px_rgba(192,192,192,0.12)] group-hover:border-[#C0C0C0] transition-colors">
-            <Sparkles className="w-4 h-4 text-[#C0C0C0] group-hover:text-white transition-colors" />
+          <div className="relative w-9 h-9 rounded-xl bg-gradient-to-b from-zinc-800 to-zinc-950 border border-zinc-700/80 flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.07)] group-hover:border-zinc-400 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.18)] transition-all duration-300">
+            <Sparkles className="w-4 h-4 text-zinc-300 group-hover:text-white transition-colors" />
+            <span className="absolute -bottom-1 -right-1 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-base font-extrabold tracking-tight font-sans">
-                <span className="text-white">LAZY</span> <span className="text-[#C0C0C0]">UI</span>
+              <span className="text-base font-black tracking-tight font-sans text-white">
+                LAZY<span className="text-zinc-400 ml-1">UI</span>
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#111111] border border-[#333333] text-[#C0C0C0] tracking-wider">
-                PRO
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-zinc-900 border border-zinc-700 text-zinc-300 tracking-wider">
+                v2.0
               </span>
             </div>
-            <p className="text-[9px] text-[#888888] font-mono tracking-[0.15em] uppercase hidden sm:block">
-              PREMIUM COMPONENT LIBRARY
+            <p className="text-[9px] text-zinc-500 font-mono tracking-[0.15em] uppercase hidden sm:block">
+              REACT & TAILWIND VAULT
             </p>
           </div>
         </div>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1 bg-[#0A0A0A] p-1 rounded-2xl border border-[#222222] shadow-inner">
+        <nav className="hidden md:flex items-center gap-1 bg-zinc-950/90 p-1 rounded-2xl border border-zinc-800 shadow-inner">
           <button
             onClick={() => onNavigate('home')}
-            className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`relative px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
               currentView === 'home'
-                ? 'bg-[#1A1A1A] text-white border border-[#333333] shadow-[0_0_15px_rgba(255,255,255,0.08)]'
-                : 'text-[#888888] hover:text-[#E5E5E5]'
+                ? 'bg-zinc-800 text-white border border-zinc-700 shadow-[0_0_15px_rgba(255,255,255,0.08)]'
+                : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             Home
@@ -85,32 +89,33 @@ export function Navbar({
 
           <button
             onClick={() => onNavigate('showcase')}
-            className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`relative px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
               currentView === 'showcase'
-                ? 'bg-[#1A1A1A] text-white border border-[#333333] shadow-[0_0_15px_rgba(255,255,255,0.08)]'
-                : 'text-[#888888] hover:text-[#E5E5E5]'
+                ? 'bg-zinc-800 text-white border border-zinc-700 shadow-[0_0_15px_rgba(255,255,255,0.08)]'
+                : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             Showcase
           </button>
 
           <button
-            onClick={() => onNavigate('themes')}
-            className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-              currentView === 'themes'
-                ? 'bg-[#1A1A1A] text-white border border-[#333333] shadow-[0_0_15px_rgba(255,255,255,0.08)]'
-                : 'text-[#888888] hover:text-[#E5E5E5]'
+            onClick={() => onNavigate('leaderboard')}
+            className={`relative px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none flex items-center gap-1.5 ${
+              currentView === 'leaderboard'
+                ? 'bg-zinc-800 text-white border border-zinc-700 shadow-[0_0_15px_rgba(255,255,255,0.08)]'
+                : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            Theme Sandbox
+            <Trophy className="w-3.5 h-3.5 text-amber-400" />
+            <span>Leaderboard</span>
           </button>
 
           <button
             onClick={() => onNavigate('dashboard')}
-            className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`relative px-4 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none ${
               currentView === 'dashboard'
-                ? 'bg-[#1A1A1A] text-white border border-[#333333] shadow-[0_0_15px_rgba(255,255,255,0.08)]'
-                : 'text-[#888888] hover:text-[#E5E5E5]'
+                ? 'bg-zinc-800 text-white border border-zinc-700 shadow-[0_0_15px_rgba(255,255,255,0.08)]'
+                : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             Dashboard
@@ -122,25 +127,25 @@ export function Navbar({
           {/* Daily Quota Indicator Pill */}
           <div
             onClick={() => onNavigate('dashboard')}
-            className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0A0A0A] border border-[#333333] hover:border-[#444444] transition-all cursor-pointer text-xs font-mono"
-            title="Daily Copy Quota: Max 2 code copies per 24 hours"
+            className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer text-xs font-mono group"
+            title="Daily Copy Quota: 2 free copies per day (resets at midnight UTC)"
           >
             <span
               className={`w-2 h-2 rounded-full ${
                 canCopy ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
               }`}
             />
-            <span className="text-[#C0C0C0] text-[11px] tracking-wide">
-              {canCopy ? `${remainingCredits}/2 AVAILABLE` : '0/2 USED TODAY'}
+            <span className="text-zinc-300 text-[11px] font-semibold tracking-wide group-hover:text-white">
+              {canCopy ? `${remainingCredits}/2 CREDITS LEFT` : '0/2 USED TODAY'}
             </span>
           </div>
 
           {/* Upload Button */}
           <button
             onClick={onOpenUpload}
-            className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#111111] border border-[#333333] text-xs font-semibold text-[#E5E5E5] hover:text-white hover:border-[#C0C0C0] hover:bg-[#1A1A1A] transition-all cursor-pointer"
+            className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-semibold text-zinc-200 hover:text-white hover:border-zinc-500 hover:bg-zinc-800 transition-all cursor-pointer shadow-sm active:scale-95"
           >
-            <Plus className="w-3.5 h-3.5 text-[#C0C0C0]" />
+            <Plus className="w-3.5 h-3.5 text-zinc-300" />
             <span>Upload</span>
           </button>
 
@@ -149,21 +154,21 @@ export function Navbar({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onNavigate('dashboard')}
-                className="flex items-center gap-2 p-1 pl-2.5 rounded-xl bg-[#0A0A0A] border border-[#333333] hover:border-[#C0C0C0] transition-all cursor-pointer"
+                className="flex items-center gap-2 p-1 pl-2.5 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-600 transition-all cursor-pointer"
               >
-                <span className="text-xs font-mono text-[#E5E5E5] hidden sm:inline max-w-[120px] truncate">
-                  {currentUser.email.split('@')[0]}
+                <span className="text-xs font-mono text-zinc-200 hidden sm:inline max-w-[120px] truncate">
+                  {currentUser.name || currentUser.email.split('@')[0]}
                 </span>
                 <img
                   src={currentUser.avatar}
                   alt={currentUser.name}
-                  className="w-7 h-7 rounded-lg bg-[#050505] border border-[#333333]"
+                  className="w-7 h-7 rounded-lg bg-black border border-zinc-800 object-cover"
                 />
               </button>
 
               <button
                 onClick={onLogout}
-                className="p-2 rounded-xl bg-[#0A0A0A] border border-[#333333] text-[#888888] hover:text-white hover:bg-[#1A1A1A] transition-colors cursor-pointer"
+                className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors cursor-pointer"
                 title="Log out"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -172,27 +177,9 @@ export function Navbar({
           ) : (
             <button
               onClick={onOpenAuth}
-              className="px-4 py-2 rounded-xl font-bold text-xs bg-white text-black hover:bg-[#C0C0C0] transition-all shadow-[0_0_15px_rgba(192,192,192,0.25)] flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 rounded-xl font-bold text-xs bg-white text-black hover:bg-zinc-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
-              {/* Google G small */}
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
-                <path
-                  fill="#EA4335"
-                  d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"
-                />
-                <path
-                  fill="#4285F4"
-                  d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.1-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2c0 2.8.7 5.5 1.9 7.8l3.7-2.9z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.3 7.5 23.5 12 23.5z"
-                />
-              </svg>
+              <Zap className="w-3.5 h-3.5 text-black fill-current" />
               <span>Sign In</span>
             </button>
           )}
@@ -200,7 +187,7 @@ export function Navbar({
           {/* Mobile Menu Toggle */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-xl bg-[#0A0A0A] border border-[#333333] text-[#E5E5E5]"
+            className="md:hidden p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -208,67 +195,75 @@ export function Navbar({
       </div>
 
       {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden p-4 bg-[#050505] border-b border-[#222222] space-y-2">
-          <button
-            onClick={() => {
-              onNavigate('home');
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full py-2.5 px-4 rounded-xl text-left text-xs font-semibold ${
-              currentView === 'home' ? 'bg-[#1A1A1A] text-white border border-[#333333]' : 'text-[#888888]'
-            }`}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden p-4 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800 space-y-2 overflow-hidden"
           >
-            Home
-          </button>
+            <button
+              onClick={() => {
+                onNavigate('home');
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full py-2.5 px-4 rounded-xl text-left text-xs font-semibold transition-all ${
+                currentView === 'home' ? 'bg-zinc-800 text-white border border-zinc-700' : 'text-zinc-400'
+              }`}
+            >
+              Home
+            </button>
 
-          <button
-            onClick={() => {
-              onNavigate('showcase');
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full py-2.5 px-4 rounded-xl text-left text-xs font-semibold ${
-              currentView === 'showcase' ? 'bg-[#1A1A1A] text-white border border-[#333333]' : 'text-[#888888]'
-            }`}
-          >
-            Showcase Vault
-          </button>
+            <button
+              onClick={() => {
+                onNavigate('showcase');
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full py-2.5 px-4 rounded-xl text-left text-xs font-semibold transition-all ${
+                currentView === 'showcase' ? 'bg-zinc-800 text-white border border-zinc-700' : 'text-zinc-400'
+              }`}
+            >
+              Showcase Vault
+            </button>
 
-          <button
-            onClick={() => {
-              onNavigate('themes');
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full py-2.5 px-4 rounded-xl text-left text-xs font-semibold ${
-              currentView === 'themes' ? 'bg-[#1A1A1A] text-white border border-[#333333]' : 'text-[#888888]'
-            }`}
-          >
-            Theme Sandbox
-          </button>
+            <button
+              onClick={() => {
+                onNavigate('leaderboard');
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full py-2.5 px-4 rounded-xl text-left text-xs font-semibold transition-all flex items-center gap-2 ${
+                currentView === 'leaderboard' ? 'bg-zinc-800 text-white border border-zinc-700' : 'text-zinc-400'
+              }`}
+            >
+              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <span>Leaderboard</span>
+            </button>
 
-          <button
-            onClick={() => {
-              onNavigate('dashboard');
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full py-2.5 px-4 rounded-xl text-left text-xs font-semibold ${
-              currentView === 'dashboard' ? 'bg-[#1A1A1A] text-white border border-[#333333]' : 'text-[#888888]'
-            }`}
-          >
-            My Dashboard & Wishlist
-          </button>
+            <button
+              onClick={() => {
+                onNavigate('dashboard');
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full py-2.5 px-4 rounded-xl text-left text-xs font-semibold transition-all ${
+                currentView === 'dashboard' ? 'bg-zinc-800 text-white border border-zinc-700' : 'text-zinc-400'
+              }`}
+            >
+              My Dashboard & Library
+            </button>
 
-          <button
-            onClick={() => {
-              onOpenUpload();
-              setMobileMenuOpen(false);
-            }}
-            className="w-full py-2.5 px-4 rounded-xl bg-[#111111] border border-[#333333] text-left text-xs font-semibold text-[#E5E5E5] flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4 text-[#C0C0C0]" /> Share UI Component
-          </button>
-        </div>
-      )}
+            <button
+              onClick={() => {
+                onOpenUpload();
+                setMobileMenuOpen(false);
+              }}
+              className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 border border-zinc-700 text-left text-xs font-semibold text-zinc-200 flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4 text-zinc-300" /> Share UI Component
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }

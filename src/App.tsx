@@ -10,11 +10,17 @@ import {
   toggleWishlistComponent,
   deleteComponent,
 } from './services/api';
-import { subscribeToFirebaseAuth, syncUserInFirestore, logOutFromFirebase } from './lib/firebase';
+import {
+  subscribeToFirebaseAuth,
+  subscribeToComponentsInFirestore,
+  syncUserInFirestore,
+  logOutFromFirebase,
+} from './lib/firebase';
 import { Sidebar } from './components/Sidebar';
 import { Footer } from './components/Footer';
 import { HomeView } from './components/HomeView';
 import { ShowcaseView } from './components/ShowcaseView';
+import { LeaderboardView } from './components/LeaderboardView';
 import { DashboardView } from './components/DashboardView';
 import { ComponentDetailModal } from './components/ComponentDetailModal';
 import { AuthModal } from './components/AuthModal';
@@ -24,7 +30,7 @@ import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { SEED_COMPONENTS } from './data/seedComponents';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'home' | 'showcase' | 'dashboard'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'showcase' | 'dashboard' | 'leaderboard'>('home');
   const [components, setComponents] = useState<UIComponentItem[]>(SEED_COMPONENTS);
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
   const [selectedComponent, setSelectedComponent] = useState<UIComponentItem | null>(null);
@@ -47,8 +53,10 @@ export default function App() {
     setTimeout(() => setToastMsg(null), 4000);
   };
 
+  const [selectedShowcaseCategory, setSelectedShowcaseCategory] = useState<string>('All');
+
   // Navigation helper with browser history support
-  const navigateToView = (view: 'home' | 'showcase' | 'dashboard', replace = false) => {
+  const navigateToView = (view: 'home' | 'showcase' | 'dashboard' | 'leaderboard', replace = false) => {
     setCurrentView(view);
     setSelectedComponent(null);
     const searchParams = new URLSearchParams(window.location.search);
@@ -67,6 +75,13 @@ export default function App() {
     } else {
       window.history.pushState(state, '', url);
     }
+  };
+
+  const handleNavigateToShowcase = (category?: string) => {
+    if (category) {
+      setSelectedShowcaseCategory(category);
+    }
+    navigateToView('showcase');
   };
 
   const handleSelectComponent = (comp: UIComponentItem) => {
@@ -132,7 +147,7 @@ export default function App() {
     // Initial URL sync
     const initialParams = new URLSearchParams(window.location.search);
     const initialView = initialParams.get('view');
-    if (initialView === 'showcase' || initialView === 'dashboard' || initialView === 'home') {
+    if (initialView === 'showcase' || initialView === 'dashboard' || initialView === 'home' || initialView === 'leaderboard') {
       setCurrentView(initialView);
     }
     const compId = initialParams.get('component');
@@ -146,10 +161,10 @@ export default function App() {
     // Real Browser Back/Forward Popstate Listener
     const handlePopState = (event: PopStateEvent) => {
       const params = new URLSearchParams(window.location.search);
-      const viewParam = params.get('view') as 'home' | 'showcase' | 'dashboard' | null;
+      const viewParam = params.get('view') as 'home' | 'showcase' | 'dashboard' | 'leaderboard' | null;
       const compParam = params.get('component');
 
-      const nextView = viewParam || (event.state?.view as 'home' | 'showcase' | 'dashboard') || 'home';
+      const nextView = viewParam || (event.state?.view as 'home' | 'showcase' | 'dashboard' | 'leaderboard') || 'home';
       setCurrentView(nextView);
 
       const targetCompId = compParam || event.state?.componentId;
@@ -180,7 +195,7 @@ export default function App() {
           wishlistComponentIds: storedUser?.wishlistComponentIds || [],
           likedComponentIds: storedUser?.likedComponentIds || [],
         };
-        const synced = await syncUserInFirestore(baseSession);
+        const synced = await syncUserInFirestore(session);
         setCurrentUser(synced);
         saveStoredUser(synced);
       }
@@ -188,9 +203,30 @@ export default function App() {
 
 
 
+    // Subscribe to real-time component additions worldwide from Firestore
+    const unsubscribeFirestore = subscribeToComponentsInFirestore((cloudComponents) => {
+      if (cloudComponents && cloudComponents.length > 0) {
+        setComponents((prev) => {
+          const map = new Map<string, UIComponentItem>();
+          for (const item of cloudComponents) {
+            map.set(item.id, item);
+          }
+          for (const item of prev) {
+            if (!map.has(item.id)) {
+              map.set(item.id, item);
+            }
+          }
+          return Array.from(map.values());
+        });
+      }
+    });
+
     return () => {
       window.removeEventListener('popstate', handlePopState);
       unsubscribe();
+      if (typeof unsubscribeFirestore === 'function') {
+        unsubscribeFirestore();
+      }
     };
   }, []);
 
@@ -353,17 +389,18 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#E5E5E5] flex flex-col md:flex-row font-sans selection:bg-zinc-800 selection:text-white">
+    <div className="min-h-screen bg-[#050505] text-[#E5E5E5] flex flex-col md:flex-row font-sans selection:bg-white selection:text-black">
       {/* Toast Notification */}
       <AnimatePresence>
         {toastMsg && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full bg-[#141414] border border-[#2B2B2B] text-xs font-semibold text-white shadow-[0_10px_30px_rgba(0,0,0,0.8),0_0_20px_rgba(255,255,255,0.1)] flex items-center gap-2"
+            initial={{ opacity: 0, y: -16, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -16, scale: 0.95 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#141414] border border-[#282828] text-[11px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,0.7)] flex items-center gap-2"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             <span>{toastMsg}</span>
           </motion.div>
         )}
@@ -381,53 +418,100 @@ export default function App() {
       {/* Main View Area */}
       <div ref={scrollContainerRef} className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <main className="flex-1 pt-4 sm:pt-6">
-          {currentView === 'home' && (
-            <HomeView
-              components={components}
-              currentUser={currentUser}
-              scrollContainerRef={scrollContainerRef}
-              onNavigateShowcase={() => navigateToView('showcase')}
-              onNavigateDashboard={() => navigateToView('dashboard')}
-              onSelectComponent={handleSelectComponent}
-              onRequireAuth={handleRequireAuth}
-              onOpenShare={handleOpenShare}
-              onToggleLike={handleToggleLike}
-              onToggleWishlist={handleToggleWishlist}
-              onDeleteComponent={handleDeleteComponent}
-            />
-          )}
+          <AnimatePresence mode="wait">
+            {currentView === 'home' && (
+              <motion.div
+                key="home"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+              >
+                <HomeView
+                  components={components}
+                  currentUser={currentUser}
+                  scrollContainerRef={scrollContainerRef}
+                  onNavigateShowcase={handleNavigateToShowcase}
+                  onNavigateDashboard={() => navigateToView('dashboard')}
+                  onNavigateLeaderboard={() => navigateToView('leaderboard')}
+                  onSelectComponent={handleSelectComponent}
+                  onRequireAuth={handleRequireAuth}
+                  onOpenShare={handleOpenShare}
+                  onToggleLike={handleToggleLike}
+                  onToggleWishlist={handleToggleWishlist}
+                  onDeleteComponent={handleDeleteComponent}
+                />
+              </motion.div>
+            )}
 
-          {currentView === 'showcase' && (
-            <ShowcaseView
-              components={components}
-              currentUser={currentUser}
-              onSelectComponent={handleSelectComponent}
-              onRequireAuth={handleRequireAuth}
-              onOpenShare={handleOpenShare}
-              onToggleLike={handleToggleLike}
-              onToggleWishlist={handleToggleWishlist}
-              onDeleteComponent={handleDeleteComponent}
-              onNavigateBack={handleNavigateBack}
-            />
-          )}
+            {currentView === 'showcase' && (
+              <motion.div
+                key="showcase"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+              >
+                <ShowcaseView
+                  components={components}
+                  currentUser={currentUser}
+                  initialCategory={selectedShowcaseCategory}
+                  onSelectComponent={handleSelectComponent}
+                  onRequireAuth={handleRequireAuth}
+                  onOpenShare={handleOpenShare}
+                  onToggleLike={handleToggleLike}
+                  onToggleWishlist={handleToggleWishlist}
+                  onDeleteComponent={handleDeleteComponent}
+                  onNavigateBack={handleNavigateBack}
+                />
+              </motion.div>
+            )}
 
-          {currentView === 'dashboard' && (
-            <DashboardView
-              currentUser={currentUser}
-              allComponents={components}
-              onSelectComponent={handleSelectComponent}
-              onOpenUpload={() => setIsUploadOpen(true)}
-              onRequireAuth={handleRequireAuth}
-              onOpenShare={handleOpenShare}
-              onToggleLike={handleToggleLike}
-              onToggleWishlist={handleToggleWishlist}
-              onDeleteComponent={handleDeleteComponent}
-              onNavigateShowcase={() => navigateToView('showcase')}
-              onNavigateBack={handleNavigateBack}
-              onUserSessionUpdated={handleUserSessionUpdated}
-              onShowToast={showToast}
-            />
-          )}
+            {currentView === 'leaderboard' && (
+              <motion.div
+                key="leaderboard"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+              >
+                <LeaderboardView
+                  currentUser={currentUser}
+                  onNavigateShowcase={(creatorKeyword) => {
+                    handleNavigateToShowcase();
+                  }}
+                  onOpenUpload={() => setIsUploadOpen(true)}
+                  onNavigateBack={handleNavigateBack}
+                />
+              </motion.div>
+            )}
+
+            {currentView === 'dashboard' && (
+              <motion.div
+                key="dashboard"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+              >
+                <DashboardView
+                  currentUser={currentUser}
+                  allComponents={components}
+                  onSelectComponent={handleSelectComponent}
+                  onOpenUpload={() => setIsUploadOpen(true)}
+                  onRequireAuth={handleRequireAuth}
+                  onOpenShare={handleOpenShare}
+                  onToggleLike={handleToggleLike}
+                  onToggleWishlist={handleToggleWishlist}
+                  onDeleteComponent={handleDeleteComponent}
+                  onNavigateShowcase={() => navigateToView('showcase')}
+                  onNavigateBack={handleNavigateBack}
+                  onUserSessionUpdated={handleUserSessionUpdated}
+                  onShowToast={showToast}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </main>
 
         {/* Footer */}
